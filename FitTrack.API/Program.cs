@@ -11,9 +11,8 @@ builder.Services.Configure<MongoDbSettings>(
 
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-
-// Add after other service registrations
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<ICalculationService, CalculationService>();
 
 // Add CORS - Permite requests do frontend
 builder.Services.AddCors(options =>
