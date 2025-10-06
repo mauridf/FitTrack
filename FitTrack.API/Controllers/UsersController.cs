@@ -2,11 +2,13 @@
 using FitTrack.Core.Entities;
 using FitTrack.Core.DTOs;
 using FitTrack.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FitTrack.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
@@ -37,39 +39,39 @@ public class UsersController : ControllerBase
     }
 
     // POST: api/v1/users
-    [HttpPost]
-    public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserDto createUserDto)
-    {
-        // Verificar se email já existe
-        if (await _userRepository.EmailExistsAsync(createUserDto.Email))
-        {
-            return BadRequest(new { message = "Email já está em uso." });
-        }
+    //[HttpPost]
+    //public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserDto createUserDto)
+    //{
+    //    // Verificar se email já existe
+    //    if (await _userRepository.EmailExistsAsync(createUserDto.Email))
+    //    {
+    //        return BadRequest(new { message = "Email já está em uso." });
+    //    }
 
-        // Criar usuário
-        var user = new User
-        {
-            Name = createUserDto.Name,
-            Email = createUserDto.Email,
-            PasswordHash = _passwordHasher.HashPassword(createUserDto.Password),
-            BirthDate = createUserDto.BirthDate,
-            Gender = createUserDto.Gender,
-            HeightCm = createUserDto.HeightCm,
-            WeightKg = createUserDto.WeightKg,
-            ActivityLevel = createUserDto.ActivityLevel,
-            Goal = createUserDto.Goal,
-            TargetWeightKg = createUserDto.TargetWeightKg,
-            AvailableEquipment = createUserDto.AvailableEquipment,
-            Restrictions = createUserDto.Restrictions,
-            Preference = createUserDto.Preference,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+    //    // Criar usuário
+    //    var user = new User
+    //    {
+    //        Name = createUserDto.Name,
+    //        Email = createUserDto.Email,
+    //        PasswordHash = _passwordHasher.HashPassword(createUserDto.Password),
+    //        BirthDate = createUserDto.BirthDate,
+    //        Gender = createUserDto.Gender,
+    //        HeightCm = createUserDto.HeightCm,
+    //        WeightKg = createUserDto.WeightKg,
+    //        ActivityLevel = createUserDto.ActivityLevel,
+    //        Goal = createUserDto.Goal,
+    //        TargetWeightKg = createUserDto.TargetWeightKg,
+    //        AvailableEquipment = createUserDto.AvailableEquipment,
+    //        Restrictions = createUserDto.Restrictions,
+    //        Preference = createUserDto.Preference,
+    //        CreatedAt = DateTime.UtcNow,
+    //        UpdatedAt = DateTime.UtcNow
+    //    };
 
-        await _userRepository.CreateAsync(user);
+    //    await _userRepository.CreateAsync(user);
 
-        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, MapToDto(user));
-    }
+    //    return CreatedAtAction(nameof(GetUser), new { id = user.Id }, MapToDto(user));
+    //}
 
     // PUT: api/v1/users/{id}
     [HttpPut("{id}")]

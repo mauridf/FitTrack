@@ -17,4 +17,5 @@ public class MongoDbContext
     // Coleções (equivalente a tabelas no SQL)
     public IMongoCollection<User> Users => _database.GetCollection<User>("users");
     public IMongoCollection<Measurement> Measurements => _database.GetCollection<Measurement>("measurements");
+    public IMongoCollection<RefreshToken> RefreshTokens => _database.GetCollection<RefreshToken>("refresh_tokens");
 }
