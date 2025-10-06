@@ -1,4 +1,7 @@
 using FitTrack.Infrastructure.Data;
+using FitTrack.Infrastructure.Repositories;
+using FitTrack.Core.Interfaces;
+using FitTrack.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +10,10 @@ builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("Mongo"));
 
 builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Add after other service registrations
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 // Add CORS - Permite requests do frontend
 builder.Services.AddCors(options =>
