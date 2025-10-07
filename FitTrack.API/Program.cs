@@ -22,6 +22,9 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
 builder.Services.AddScoped<IExerciseRepository, ExerciseRepository>();
 builder.Services.AddScoped<IExerciseDbClient, ExerciseDbClient>();
+builder.Services.AddScoped<ITrainingPlanRepository, TrainingPlanRepository>();
+builder.Services.AddScoped<ITrainingSessionRepository, TrainingSessionRepository>();
+builder.Services.AddScoped<ITrainingPlanService, TrainingPlanService>();
 
 builder.Services.AddHttpClient<IExerciseDbClient, ExerciseDbClient>();
 
