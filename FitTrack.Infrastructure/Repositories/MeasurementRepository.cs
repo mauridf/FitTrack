@@ -12,6 +12,23 @@ public class MeasurementRepository : IMeasurementRepository
     public MeasurementRepository(MongoDbContext context)
     {
         _context = context;
+
+        // Criar índices para melhor performance
+        CreateIndexes();
+    }
+
+    private void CreateIndexes()
+    {
+        // Índice composto para buscas por usuário + tipo + data
+        var indexKeys = Builders<Measurement>.IndexKeys
+            .Ascending(m => m.UserId)
+            .Ascending(m => m.Type)
+            .Descending(m => m.Date);
+
+        var indexOptions = new CreateIndexOptions { Name = "UserId_Type_Date" };
+        var indexModel = new CreateIndexModel<Measurement>(indexKeys, indexOptions);
+
+        _context.Measurements.Indexes.CreateOne(indexModel);
     }
 
     public async Task<Measurement?> GetByIdAsync(string id)
@@ -22,7 +39,7 @@ public class MeasurementRepository : IMeasurementRepository
     public async Task<IEnumerable<Measurement>> GetByUserIdAsync(string userId, string? type = null, DateTime? from = null, DateTime? to = null)
     {
         var filterBuilder = Builders<Measurement>.Filter;
-        var filter = filterBuilder.Eq(m => m.UserId, userId);
+        var filter = filterBuilder.Eq(m => m.UserId, userId); // SEMPRE filtrar por userId
 
         if (!string.IsNullOrEmpty(type))
         {

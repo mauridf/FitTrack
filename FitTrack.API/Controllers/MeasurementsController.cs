@@ -42,7 +42,7 @@ public class MeasurementsController : ControllerBase
 
         var measurement = new Measurement
         {
-            UserId = userId,
+            UserId = userId, // SEMPRE usar o userId do usuário autenticado
             Type = createDto.Type,
             Value = createDto.Value,
             Unit = createDto.Unit,
@@ -75,6 +75,7 @@ public class MeasurementsController : ControllerBase
             return Unauthorized();
         }
 
+        // SEMPRE buscar apenas as medidas do usuário autenticado
         var measurements = await _measurementRepository.GetByUserIdAsync(userId, type, from, to);
 
         return Ok(measurements.Select(MapToDto));
@@ -96,7 +97,7 @@ public class MeasurementsController : ControllerBase
             return NotFound();
         }
 
-        // Verificar se a medida pertence ao usuário
+        // Verificar se a medida pertence ao usuário autenticado
         if (measurement.UserId != userId)
         {
             return Forbid();
@@ -121,7 +122,7 @@ public class MeasurementsController : ControllerBase
             return NotFound();
         }
 
-        // Verificar se a medida pertence ao usuário
+        // Verificar se a medida pertence ao usuário autenticado
         if (measurement.UserId != userId)
         {
             return Forbid();
@@ -142,6 +143,8 @@ public class MeasurementsController : ControllerBase
         }
 
         var fromDate = DateTime.UtcNow.AddDays(-days);
+
+        // SEMPRE buscar apenas as medidas de peso do usuário autenticado
         var weightMeasurements = await _measurementRepository.GetByUserIdAsync(userId, "weight", fromDate);
 
         var progressData = weightMeasurements
@@ -158,8 +161,30 @@ public class MeasurementsController : ControllerBase
         {
             periodDays = days,
             measurements = progressData,
-            totalMeasurements = progressData.Count
+            totalMeasurements = progressData.Count,
+            currentWeight = progressData.LastOrDefault()?.weight,
+            startingWeight = progressData.FirstOrDefault()?.weight
         });
+    }
+
+    // GET: api/v1/measurements/types
+    [HttpGet("types")]
+    public async Task<ActionResult<IEnumerable<string>>> GetMeasurementTypes()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
+        // Buscar todos os tipos de medidas que o usuário já registrou
+        var measurements = await _measurementRepository.GetByUserIdAsync(userId);
+        var types = measurements
+            .Select(m => m.Type)
+            .Distinct()
+            .ToList();
+
+        return Ok(types);
     }
 
     private string? GetCurrentUserId()
