@@ -16,9 +16,8 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task<RefreshToken?> GetByTokenAsync(string token)
     {
-        return await _context.RefreshTokens
-            .Find(rt => rt.Token == token)
-            .FirstOrDefaultAsync();
+        var filter = Builders<RefreshToken>.Filter.Eq(rt => rt.Token, token);
+        return await _context.RefreshTokens.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task CreateAsync(RefreshToken token)

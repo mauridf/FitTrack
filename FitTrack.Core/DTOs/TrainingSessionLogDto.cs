@@ -3,9 +3,9 @@
 public class TrainingSessionLogDto
 {
     public string? Id { get; set; }
-    public required string UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
     public string? PlanId { get; set; }
-    public string? SessionId { get; set; }
+    public string? SessionId { get; set; } // Mantém como string comum
     public DateTime Date { get; set; }
     public string SessionType { get; set; } = "mixed";
     public int DurationMinutes { get; set; }
@@ -35,7 +35,7 @@ public class ExerciseSetDto
 public class CreateSessionLogDto
 {
     public string? PlanId { get; set; }
-    public string? SessionId { get; set; }
+    public string? SessionId { get; set; } // Mantém como string comum
     public DateTime Date { get; set; } = DateTime.UtcNow;
     public string SessionType { get; set; } = "mixed";
     public int DurationMinutes { get; set; }

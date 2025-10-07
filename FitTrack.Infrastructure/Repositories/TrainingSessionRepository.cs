@@ -30,7 +30,8 @@ public class TrainingSessionRepository : ITrainingSessionRepository
 
     public async Task<TrainingSessionLog?> GetByIdAsync(string id)
     {
-        return await _context.TrainingSessions.Find(s => s.Id == id).FirstOrDefaultAsync();
+        var filter = Builders<TrainingSessionLog>.Filter.Eq(s => s.Id, id);
+        return await _context.TrainingSessions.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<IEnumerable<TrainingSessionLog>> GetByUserIdAsync(string userId, DateTime? from = null, DateTime? to = null)

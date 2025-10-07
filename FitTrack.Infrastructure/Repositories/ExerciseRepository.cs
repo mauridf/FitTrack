@@ -107,7 +107,16 @@ public class ExerciseRepository : IExerciseRepository
 
     public async Task<Exercise?> GetByIdAsync(string id)
     {
-        return await _context.Exercises.Find(e => e.Id == id).FirstOrDefaultAsync();
+        // Se o ID é um ObjectId válido, converte, senão busca como string comum
+        if (ObjectId.TryParse(id, out var objectId))
+        {
+            return await _context.Exercises.Find(e => e.Id == id).FirstOrDefaultAsync();
+        }
+        else
+        {
+            // Para IDs que não são ObjectIds (como ExternalId)
+            return await _context.Exercises.Find(e => e.ExternalId == id).FirstOrDefaultAsync();
+        }
     }
 
     public async Task<Exercise?> GetByExternalIdAsync(string externalId)

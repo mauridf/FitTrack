@@ -16,12 +16,14 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByIdAsync(string id)
     {
-        return await _context.Users.Find(u => u.Id == id).FirstOrDefaultAsync();
+        var filter = Builders<User>.Filter.Eq(u => u.Id, id);
+        return await _context.Users.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<User?> GetByEmailAsync(string email)
     {
-        return await _context.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
+        var filter = Builders<User>.Filter.Eq(u => u.Email, email);
+        return await _context.Users.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<User> CreateAsync(User user)

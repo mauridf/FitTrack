@@ -33,7 +33,8 @@ public class MeasurementRepository : IMeasurementRepository
 
     public async Task<Measurement?> GetByIdAsync(string id)
     {
-        return await _context.Measurements.Find(m => m.Id == id).FirstOrDefaultAsync();
+        var filter = Builders<Measurement>.Filter.Eq(m => m.Id, id);
+        return await _context.Measurements.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<IEnumerable<Measurement>> GetByUserIdAsync(string userId, string? type = null, DateTime? from = null, DateTime? to = null)

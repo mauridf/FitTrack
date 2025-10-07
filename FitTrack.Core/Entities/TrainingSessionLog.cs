@@ -10,13 +10,12 @@ public class TrainingSessionLog
     public string? Id { get; set; }
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public required string UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string? PlanId { get; set; }
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string? SessionId { get; set; } // ID da sessão no plano
+    public string? SessionId { get; set; } // Remove BsonRepresentation - será string comum
 
     public DateTime Date { get; set; }
     public string SessionType { get; set; } = "mixed";
@@ -31,7 +30,7 @@ public class TrainingSessionLog
 public class SessionExerciseLog
 {
     [BsonRepresentation(BsonType.ObjectId)]
-    public required string ExerciseId { get; set; }
+    public string ExerciseId { get; set; }
 
     public string ExerciseName { get; set; } = string.Empty;
     public List<ExerciseSet> Sets { get; set; } = new();

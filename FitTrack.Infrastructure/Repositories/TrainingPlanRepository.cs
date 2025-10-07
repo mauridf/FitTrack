@@ -30,7 +30,8 @@ public class TrainingPlanRepository : ITrainingPlanRepository
 
     public async Task<TrainingPlan?> GetByIdAsync(string id)
     {
-        return await _context.TrainingPlans.Find(p => p.Id == id).FirstOrDefaultAsync();
+        var filter = Builders<TrainingPlan>.Filter.Eq(p => p.Id, id);
+        return await _context.TrainingPlans.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<IEnumerable<TrainingPlan>> GetByUserIdAsync(string userId)
