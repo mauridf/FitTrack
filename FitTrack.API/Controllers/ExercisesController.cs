@@ -227,8 +227,8 @@ public class ExercisesController : ControllerBase
 
                 var exercise = new Exercise
                 {
-                    UserId = null, // Exercícios da API são globais (UserId null)
-                    ExternalId = externalExercise.ExternalId,
+                    UserId = null,
+                    ExternalId = externalExercise.ExternalId ?? $"external_{Guid.NewGuid():N}", // Garantir que nunca seja null
                     Name = externalExercise.Name,
                     BodyPart = externalExercise.BodyPart,
                     TargetMuscle = externalExercise.TargetMuscle,
@@ -237,7 +237,7 @@ public class ExercisesController : ControllerBase
                     Instructions = externalExercise.Instructions,
                     SecondaryMuscles = externalExercise.SecondaryMuscles,
                     IsCustom = false,
-                    IsPublic = true, // Exercícios da API são públicos
+                    IsPublic = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };

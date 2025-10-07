@@ -3,6 +3,7 @@ using FitTrack.Core.Entities;
 using FitTrack.Core.DTOs;
 using FitTrack.Core.Interfaces;
 using FitTrack.Infrastructure.Data;
+using MongoDB.Bson;
 
 namespace FitTrack.Infrastructure.Repositories;
 
@@ -13,48 +14,96 @@ public class ExerciseRepository : IExerciseRepository
     public ExerciseRepository(MongoDbContext context)
     {
         _context = context;
-        CreateIndexes();
+
+        // Chamar criação de índices de forma síncrona (em produção usar async/await apropriado)
+        CreateIndexes().Wait();
     }
 
-    private void CreateIndexes()
+    private async Task CreateIndexes()
     {
-        // Índice composto para UserId + outros campos
-        var userIndexKeys = Builders<Exercise>.IndexKeys
-            .Ascending(e => e.UserId)
-            .Ascending(e => e.IsPublic)
-            .Ascending(e => e.BodyPart)
-            .Ascending(e => e.TargetMuscle);
-
-        var userIndexOptions = new CreateIndexOptions { Name = "UserId_SearchIndex" };
-        var userIndexModel = new CreateIndexModel<Exercise>(userIndexKeys, userIndexOptions);
-
-        _context.Exercises.Indexes.CreateOne(userIndexModel);
-
-        // Índice de texto apenas para Name
-        var textIndexKeys = Builders<Exercise>.IndexKeys.Text(e => e.Name);
-        var textIndexOptions = new CreateIndexOptions { Name = "NameTextIndex" };
-        var textIndexModel = new CreateIndexModel<Exercise>(textIndexKeys, textIndexOptions);
-
-        _context.Exercises.Indexes.CreateOne(textIndexModel);
-
-        // Índice para Equipment (campo array)
-        var equipmentIndexKeys = Builders<Exercise>.IndexKeys.Ascending(e => e.Equipment);
-        var equipmentIndexOptions = new CreateIndexOptions { Name = "EquipmentIndex" };
-        var equipmentIndexModel = new CreateIndexModel<Exercise>(equipmentIndexKeys, equipmentIndexOptions);
-
-        _context.Exercises.Indexes.CreateOne(equipmentIndexModel);
-
-        // Índice único para ExternalId
-        var externalIdIndex = Builders<Exercise>.IndexKeys.Ascending(e => e.ExternalId);
-        var externalIdIndexModel = new CreateIndexModel<Exercise>(externalIdIndex, new CreateIndexOptions
+        try
         {
-            Name = "ExternalIdIndex",
-            Unique = true,
-            Sparse = true
-        });
+            // **PASSO CRÍTICO**: Dropar o índice problemático primeiro
+            try
+            {
+                await _context.Exercises.Indexes.DropOneAsync("ExternalIdIndex");
+                Console.WriteLine("Índice ExternalIdIndex removido.");
+            }
+            catch
+            {
+                // Índice pode não existir, ignora
+            }
 
-        _context.Exercises.Indexes.CreateOne(externalIdIndexModel);
+            // Aguardar um pouco para garantir que o índice foi droppado
+            await Task.Delay(1000);
+
+            // **AGORA criar o novo índice**
+            var externalIdIndex = Builders<Exercise>.IndexKeys.Ascending(e => e.ExternalId);
+            var externalIdIndexModel = new CreateIndexModel<Exercise>(externalIdIndex, new CreateIndexOptions
+            {
+                Name = "ExternalIdIndex",
+                Unique = true
+                // **REMOVER sparse: true** - não é mais necessário pois não temos nulls
+            });
+
+            await _context.Exercises.Indexes.CreateOneAsync(externalIdIndexModel);
+            Console.WriteLine("Novo índice ExternalIdIndex criado.");
+
+            // Criar outros índices...
+            var userIndexKeys = Builders<Exercise>.IndexKeys
+                .Ascending(e => e.UserId)
+                .Ascending(e => e.IsPublic)
+                .Ascending(e => e.BodyPart)
+                .Ascending(e => e.TargetMuscle);
+
+            var userIndexOptions = new CreateIndexOptions { Name = "UserId_SearchIndex" };
+            var userIndexModel = new CreateIndexModel<Exercise>(userIndexKeys, userIndexOptions);
+
+            await _context.Exercises.Indexes.CreateOneAsync(userIndexModel);
+
+            // Índice de texto apenas para Name
+            var textIndexKeys = Builders<Exercise>.IndexKeys.Text(e => e.Name);
+            var textIndexOptions = new CreateIndexOptions { Name = "NameTextIndex" };
+            var textIndexModel = new CreateIndexModel<Exercise>(textIndexKeys, textIndexOptions);
+
+            await _context.Exercises.Indexes.CreateOneAsync(textIndexModel);
+
+            // Índice para Equipment (campo array)
+            var equipmentIndexKeys = Builders<Exercise>.IndexKeys.Ascending(e => e.Equipment);
+            var equipmentIndexOptions = new CreateIndexOptions { Name = "EquipmentIndex" };
+            var equipmentIndexModel = new CreateIndexModel<Exercise>(equipmentIndexKeys, equipmentIndexOptions);
+
+            await _context.Exercises.Indexes.CreateOneAsync(equipmentIndexModel);
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao criar índices: {ex.Message}");
+        }
     }
+
+    //private async Task DropProblematicIndexes()
+    //{
+    //    try
+    //    {
+    //        // Tenta dropar o índice problemático se existir
+    //        var indexes = await _context.Exercises.Indexes.ListAsync();
+    //        var indexList = await indexes.ToListAsync();
+
+    //        var problematicIndex = indexList.FirstOrDefault(i =>
+    //            i.Contains("ExternalIdIndex") && !i.Contains("partialFilterExpression"));
+
+    //        if (problematicIndex != null)
+    //        {
+    //            await _context.Exercises.Indexes.DropOneAsync("ExternalIdIndex");
+    //        }
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        // Log do erro (em produção usar ILogger)
+    //        Console.WriteLine($"Erro ao dropar índices: {ex.Message}");
+    //    }
+    //}
 
     public async Task<Exercise?> GetByIdAsync(string id)
     {
