@@ -15,17 +15,26 @@ public class ExerciseDbClient : IExerciseDbClient
         _httpClient = httpClient;
         _configuration = configuration;
 
+        var apiKey = _configuration["ExerciseDb:ApiKey"];
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new InvalidOperationException("ExerciseDB API Key não configurada. Configure em appsettings.json.");
+        }
+
         // Configurar base URL da ExerciseDB API
         _httpClient.BaseAddress = new Uri("https://exercisedb.p.rapidapi.com/");
-        _httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Key", _configuration["ExerciseDb:ApiKey"] ?? "");
+        _httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Key", apiKey);
         _httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Host", "exercisedb.p.rapidapi.com");
+
+        // Timeout de 30 segundos
+        _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
     public async Task<List<ExerciseDto>> GetExercisesAsync()
     {
         try
         {
-            var response = await _httpClient.GetAsync("exercises?limit=1000");
+            var response = await _httpClient.GetAsync("exercises?limit=500"); // Reduzido para 500 no free tier
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -36,11 +45,13 @@ public class ExerciseDbClient : IExerciseDbClient
 
             return exercises ?? new List<ExerciseDto>();
         }
+        catch (HttpRequestException ex)
+        {
+            throw new Exception($"Erro na comunicação com ExerciseDB API: {ex.Message}");
+        }
         catch (Exception ex)
         {
-            // Log error (implementar logging depois)
-            Console.WriteLine($"Error fetching exercises: {ex.Message}");
-            return new List<ExerciseDto>();
+            throw new Exception($"Erro ao buscar exercícios: {ex.Message}");
         }
     }
 

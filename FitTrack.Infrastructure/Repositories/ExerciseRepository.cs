@@ -18,17 +18,31 @@ public class ExerciseRepository : IExerciseRepository
 
     private void CreateIndexes()
     {
-        // Índices para busca eficiente
-        var indexKeys = Builders<Exercise>.IndexKeys
-            .Text(e => e.Name)
+        // Índice composto para UserId + outros campos
+        var userIndexKeys = Builders<Exercise>.IndexKeys
+            .Ascending(e => e.UserId)
+            .Ascending(e => e.IsPublic)
             .Ascending(e => e.BodyPart)
-            .Ascending(e => e.TargetMuscle)
-            .Ascending(e => e.Equipment);
+            .Ascending(e => e.TargetMuscle);
 
-        var indexOptions = new CreateIndexOptions { Name = "SearchIndex" };
-        var indexModel = new CreateIndexModel<Exercise>(indexKeys, indexOptions);
+        var userIndexOptions = new CreateIndexOptions { Name = "UserId_SearchIndex" };
+        var userIndexModel = new CreateIndexModel<Exercise>(userIndexKeys, userIndexOptions);
 
-        _context.Exercises.Indexes.CreateOne(indexModel);
+        _context.Exercises.Indexes.CreateOne(userIndexModel);
+
+        // Índice de texto apenas para Name
+        var textIndexKeys = Builders<Exercise>.IndexKeys.Text(e => e.Name);
+        var textIndexOptions = new CreateIndexOptions { Name = "NameTextIndex" };
+        var textIndexModel = new CreateIndexModel<Exercise>(textIndexKeys, textIndexOptions);
+
+        _context.Exercises.Indexes.CreateOne(textIndexModel);
+
+        // Índice para Equipment (campo array)
+        var equipmentIndexKeys = Builders<Exercise>.IndexKeys.Ascending(e => e.Equipment);
+        var equipmentIndexOptions = new CreateIndexOptions { Name = "EquipmentIndex" };
+        var equipmentIndexModel = new CreateIndexModel<Exercise>(equipmentIndexKeys, equipmentIndexOptions);
+
+        _context.Exercises.Indexes.CreateOne(equipmentIndexModel);
 
         // Índice único para ExternalId
         var externalIdIndex = Builders<Exercise>.IndexKeys.Ascending(e => e.ExternalId);
@@ -55,7 +69,14 @@ public class ExerciseRepository : IExerciseRepository
     public async Task<IEnumerable<Exercise>> SearchAsync(ExerciseSearchDto searchDto)
     {
         var filterBuilder = Builders<Exercise>.Filter;
-        var filter = filterBuilder.Empty;
+
+        // Filtro base: exercícios públicos OU do usuário específico
+        var baseFilter = filterBuilder.Or(
+            filterBuilder.Eq(e => e.IsPublic, true),
+            filterBuilder.Eq(e => e.UserId, searchDto.UserId)
+        );
+
+        var filter = baseFilter;
 
         if (!string.IsNullOrEmpty(searchDto.Name))
         {
@@ -82,6 +103,19 @@ public class ExerciseRepository : IExerciseRepository
             filter &= filterBuilder.Eq(e => e.Difficulty, searchDto.Difficulty);
         }
 
+        // Se userId não foi fornecido, mostrar apenas públicos
+        if (string.IsNullOrEmpty(searchDto.UserId))
+        {
+            filter = filterBuilder.Eq(e => e.IsPublic, true);
+
+            // Aplicar outros filtros
+            if (!string.IsNullOrEmpty(searchDto.Name))
+                filter &= filterBuilder.Text(searchDto.Name);
+            if (!string.IsNullOrEmpty(searchDto.BodyPart))
+                filter &= filterBuilder.Eq(e => e.BodyPart, searchDto.BodyPart);
+            // ... outros filtros
+        }
+
         var skip = (searchDto.Page - 1) * searchDto.PageSize;
 
         return await _context.Exercises
@@ -89,6 +123,22 @@ public class ExerciseRepository : IExerciseRepository
             .SortBy(e => e.Name)
             .Skip(skip)
             .Limit(searchDto.PageSize)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Exercise>> GetByUserIdAsync(string userId)
+    {
+        return await _context.Exercises
+            .Find(e => e.UserId == userId)
+            .SortBy(e => e.Name)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Exercise>> GetPublicExercisesAsync()
+    {
+        return await _context.Exercises
+            .Find(e => e.IsPublic == true)
+            .SortBy(e => e.Name)
             .ToListAsync();
     }
 

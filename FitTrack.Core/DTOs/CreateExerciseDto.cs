@@ -9,4 +9,5 @@ public class CreateExerciseDto
     public List<string> Instructions { get; set; } = new();
     public List<string> SecondaryMuscles { get; set; } = new();
     public string? Difficulty { get; set; }
+    public bool IsPublic { get; set; } = false; // Add this
 }

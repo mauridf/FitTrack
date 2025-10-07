@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using FitTrack.Core.Entities;
 using FitTrack.Core.DTOs;
 using FitTrack.Core.Interfaces;
@@ -21,10 +22,22 @@ public class ExercisesController : ControllerBase
         _exerciseDbClient = exerciseDbClient;
     }
 
-    // GET: api/v1/exercises - Buscar exercícios
+    // GET: api/v1/exercises - Buscar exercícios (públicos + do usuário)
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ExerciseDto>>> GetExercises([FromQuery] ExerciseSearchDto searchDto)
     {
+        // Se usuário está autenticado, incluir seus exercícios também
+        var currentUserId = GetCurrentUserId();
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            searchDto.UserId = currentUserId;
+            searchDto.OnlyPublic = false; // Incluir exercícios do usuário
+        }
+        else
+        {
+            searchDto.OnlyPublic = true; // Apenas exercícios públicos
+        }
+
         var exercises = await _exerciseRepository.SearchAsync(searchDto);
         return Ok(exercises.Select(MapToDto));
     }
@@ -39,7 +52,29 @@ public class ExercisesController : ControllerBase
             return NotFound();
         }
 
+        // Verificar se o exercício é público ou pertence ao usuário
+        var currentUserId = GetCurrentUserId();
+        if (!exercise.IsPublic && exercise.UserId != currentUserId)
+        {
+            return Forbid();
+        }
+
         return Ok(MapToDto(exercise));
+    }
+
+    // GET: api/v1/exercises/my - Exercícios do usuário atual
+    [HttpGet("my")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<ExerciseDto>>> GetMyExercises()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
+        var exercises = await _exerciseRepository.GetByUserIdAsync(userId);
+        return Ok(exercises.Select(MapToDto));
     }
 
     // POST: api/v1/exercises - Criar exercício customizado
@@ -47,8 +82,15 @@ public class ExercisesController : ControllerBase
     [Authorize]
     public async Task<ActionResult<ExerciseDto>> CreateExercise([FromBody] CreateExerciseDto createDto)
     {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
         var exercise = new Exercise
         {
+            UserId = userId, // Sempre associar ao usuário autenticado
             Name = createDto.Name,
             BodyPart = createDto.BodyPart,
             TargetMuscle = createDto.TargetMuscle,
@@ -57,6 +99,7 @@ public class ExercisesController : ControllerBase
             SecondaryMuscles = createDto.SecondaryMuscles,
             Difficulty = createDto.Difficulty,
             IsCustom = true,
+            IsPublic = createDto.IsPublic,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -71,16 +114,22 @@ public class ExercisesController : ControllerBase
     [Authorize]
     public async Task<ActionResult<ExerciseDto>> UpdateExercise(string id, [FromBody] CreateExerciseDto updateDto)
     {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
         var exercise = await _exerciseRepository.GetByIdAsync(id);
         if (exercise == null)
         {
             return NotFound();
         }
 
-        // Só permite atualizar exercícios customizados
-        if (!exercise.IsCustom)
+        // Verificar se o exercício pertence ao usuário
+        if (exercise.UserId != userId)
         {
-            return BadRequest("Só é possível atualizar exercícios customizados.");
+            return Forbid();
         }
 
         exercise.Name = updateDto.Name;
@@ -90,6 +139,7 @@ public class ExercisesController : ControllerBase
         exercise.Instructions = updateDto.Instructions;
         exercise.SecondaryMuscles = updateDto.SecondaryMuscles;
         exercise.Difficulty = updateDto.Difficulty;
+        exercise.IsPublic = updateDto.IsPublic;
         exercise.UpdatedAt = DateTime.UtcNow;
 
         await _exerciseRepository.UpdateAsync(exercise);
@@ -102,16 +152,22 @@ public class ExercisesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> DeleteExercise(string id)
     {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
         var exercise = await _exerciseRepository.GetByIdAsync(id);
         if (exercise == null)
         {
             return NotFound();
         }
 
-        // Só permite deletar exercícios customizados
-        if (!exercise.IsCustom)
+        // Verificar se o exercício pertence ao usuário
+        if (exercise.UserId != userId)
         {
-            return BadRequest("Só é possível deletar exercícios customizados.");
+            return Forbid();
         }
 
         await _exerciseRepository.DeleteAsync(id);
@@ -142,11 +198,17 @@ public class ExercisesController : ControllerBase
         return Ok(equipment);
     }
 
-    // POST: api/v1/exercises/sync - Sincronizar com ExerciseDB (Admin)
+    // POST: api/v1/exercises/sync - Sincronizar com ExerciseDB (Admin/Usuário)
     [HttpPost("sync")]
     [Authorize]
     public async Task<ActionResult<object>> SyncWithExerciseDb()
     {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
         try
         {
             var externalExercises = await _exerciseDbClient.GetExercisesAsync();
@@ -165,6 +227,7 @@ public class ExercisesController : ControllerBase
 
                 var exercise = new Exercise
                 {
+                    UserId = null, // Exercícios da API são globais (UserId null)
                     ExternalId = externalExercise.ExternalId,
                     Name = externalExercise.Name,
                     BodyPart = externalExercise.BodyPart,
@@ -174,6 +237,7 @@ public class ExercisesController : ControllerBase
                     Instructions = externalExercise.Instructions,
                     SecondaryMuscles = externalExercise.SecondaryMuscles,
                     IsCustom = false,
+                    IsPublic = true, // Exercícios da API são públicos
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -187,7 +251,8 @@ public class ExercisesController : ControllerBase
                 message = "Sincronização concluída",
                 synced = syncedCount,
                 skipped = skippedCount,
-                total = externalExercises.Count
+                total = externalExercises.Count,
+                userId = userId
             });
         }
         catch (Exception ex)
@@ -204,11 +269,18 @@ public class ExercisesController : ControllerBase
         return Ok(bodyParts);
     }
 
+    // Método auxiliar para obter o ID do usuário atual
+    private string? GetCurrentUserId()
+    {
+        return User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    }
+
     private ExerciseDto MapToDto(Exercise exercise)
     {
         return new ExerciseDto
         {
             Id = exercise.Id,
+            UserId = exercise.UserId,
             ExternalId = exercise.ExternalId,
             Name = exercise.Name,
             BodyPart = exercise.BodyPart,
@@ -219,6 +291,7 @@ public class ExercisesController : ControllerBase
             SecondaryMuscles = exercise.SecondaryMuscles,
             Difficulty = exercise.Difficulty,
             IsCustom = exercise.IsCustom,
+            IsPublic = exercise.IsPublic,
             CreatedAt = exercise.CreatedAt
         };
     }

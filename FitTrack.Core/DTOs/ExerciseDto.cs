@@ -3,6 +3,7 @@
 public class ExerciseDto
 {
     public string? Id { get; set; }
+    public string? UserId { get; set; } // Add this line
     public string? ExternalId { get; set; }
     public required string Name { get; set; }
     public string? BodyPart { get; set; }
@@ -13,5 +14,6 @@ public class ExerciseDto
     public List<string> SecondaryMuscles { get; set; } = new();
     public string? Difficulty { get; set; }
     public bool IsCustom { get; set; }
+    public bool IsPublic { get; set; } // Add this
     public DateTime CreatedAt { get; set; }
 }
