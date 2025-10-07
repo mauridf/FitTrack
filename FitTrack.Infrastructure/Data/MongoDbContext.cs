@@ -18,4 +18,5 @@ public class MongoDbContext
     public IMongoCollection<User> Users => _database.GetCollection<User>("users");
     public IMongoCollection<Measurement> Measurements => _database.GetCollection<Measurement>("measurements");
     public IMongoCollection<RefreshToken> RefreshTokens => _database.GetCollection<RefreshToken>("refresh_tokens");
+    public IMongoCollection<Exercise> Exercises => _database.GetCollection<Exercise>("exercises");
 }
