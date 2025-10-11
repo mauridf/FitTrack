@@ -71,10 +71,10 @@ public class TrainingPlanService : ITrainingPlanService
         }
     }
 
-    private async Task<TrainingSession> GenerateSessionAsync(DateTime date, string focus, User user,
+    private async Task<Core.Entities.TrainingSession> GenerateSessionAsync(DateTime date, string focus, User user,
         List<Exercise> availableExercises, int weekNumber)
     {
-        var session = new TrainingSession
+        var session = new Core.Entities.TrainingSession
         {
             Date = date,
             DayOfWeek = date.DayOfWeek.ToString(),
@@ -313,5 +313,49 @@ public class TrainingPlanService : ITrainingPlanService
         };
 
         return (int)(baseCalories * durationFactor * intensityFactor);
+    }
+
+    public async Task<TrainingSessionStatusDto> UpdateSessionStatusAsync(string planId, string sessionId, string status)
+    {
+        var plan = await _planRepository.GetByIdAsync(planId);
+        if (plan == null)
+        {
+            throw new ArgumentException("Plano de treino não encontrado");
+        }
+
+        // Encontrar a sessão em todas as semanas
+        var session = plan.Weeks
+            .SelectMany(w => w.Sessions)
+            .FirstOrDefault(s => s.Id == sessionId);
+
+        if (session == null)
+        {
+            throw new ArgumentException("Sessão de treino não encontrada");
+        }
+
+        // Validar status
+        var validStatuses = new[] { "planned", "completed", "skipped" };
+        if (!validStatuses.Contains(status.ToLower()))
+        {
+            throw new ArgumentException($"Status inválido. Use: {string.Join(", ", validStatuses)}");
+        }
+
+        // Atualizar status
+        session.Status = status.ToLower();
+        plan.UpdatedAt = DateTime.UtcNow;
+
+        await _planRepository.UpdateAsync(plan);
+
+        return new TrainingSessionStatusDto
+        {
+            Id = session.Id,
+            Date = session.Date,
+            Type = session.Type,
+            DurationMinutes = session.DurationMinutes,
+            Status = session.Status,
+            UpdatedAt = plan.UpdatedAt,
+            PlanId = plan.Id!,
+            PlanName = plan.Name
+        };
     }
 }

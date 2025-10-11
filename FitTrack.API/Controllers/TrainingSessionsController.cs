@@ -14,17 +14,20 @@ public class TrainingSessionsController : ControllerBase
 {
     private readonly ITrainingSessionRepository _sessionRepository;
     private readonly ITrainingPlanService _planService;
+    private readonly ITrainingPlanRepository _planRepository;
     private readonly IUserRepository _userRepository;
     private readonly IExerciseRepository _exerciseRepository;
 
     public TrainingSessionsController(
         ITrainingSessionRepository sessionRepository,
         ITrainingPlanService planService,
+        ITrainingPlanRepository planRepository,
         IUserRepository userRepository,
         IExerciseRepository exerciseRepository)
     {
         _sessionRepository = sessionRepository;
         _planService = planService;
+        _planRepository = planRepository;
         _userRepository = userRepository;
         _exerciseRepository = exerciseRepository;
     }
@@ -106,6 +109,38 @@ public class TrainingSessionsController : ControllerBase
 
         var sessions = await _sessionRepository.GetByUserIdAsync(userId, from, to);
         return Ok(sessions.Select(MapToDto));
+    }
+
+    // PATCH: api/v1/training-plans/{planId}/sessions/{sessionId}/status
+    [HttpPatch("{planId}/sessions/{sessionId}/status")]
+    public async Task<ActionResult<TrainingSessionStatusDto>> UpdateSessionStatus(string planId, string sessionId, [FromBody] UpdateSessionStatusRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
+        // Verificar se o plano pertence ao usuário
+        var plan = await _planRepository.GetByIdAsync(planId);
+        if (plan == null || plan.UserId != userId)
+        {
+            return NotFound(new { message = "Plano de treino não encontrado" });
+        }
+
+        try
+        {
+            var updatedSession = await _planService.UpdateSessionStatusAsync(planId, sessionId, request.Status);
+            return Ok(updatedSession);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Erro ao atualizar status da sessão", error = ex.Message });
+        }
     }
 
     // GET: api/v1/training-sessions/{id}
