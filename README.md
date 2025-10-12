@@ -12,6 +12,9 @@ Sistema completo de acompanhamento físico com geração automática de planos d
 ## 📋 Sobre o Projeto
 O FitTrack é uma API RESTful desenvolvida em .NET 9 para acompanhamento físico completo. O sistema oferece desde cadastro de usuários até geração automática de planos de treino personalizados, integração com catálogo de exercícios e dashboard analítico.
 
+## FRONTEND
+[fit-track](https://github.com/mauridf/fit-track)
+
 ## ✨ Destaques
 - Geração automática de planos de treino baseados no perfil do usuário
 - Integração com ExerciseDB - Catálogo com +500 exercícios
